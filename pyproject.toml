@@ -1,0 +1,29 @@
+[project]
+name="teledal"
+version="1.0.0"
+description = "Pytorch implementation of teledal"
+authors = [
+    {name="Robert Attila Magyar", email="robertmagyar.023@gmail.com"}
+
+]
+#license = {text = "MIT License"}
+readme = "README.md"
+requires-python = ">= 3.9"
+
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "License :: OSI Approved :: MIT License",
+    "Development Status :: 3 - Alpha",
+]
+
+dependencies = [
+    "torch",
+    "transformers",
+    "numpy",
+    "matplotlib",
+    "tqdm"
+]
+
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
