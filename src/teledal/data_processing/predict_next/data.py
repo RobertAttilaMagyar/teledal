@@ -26,6 +26,9 @@ class PredictNextData(Dataset):
         - labels_file: Path to `.csv` file if available
         """
         super().__init__()
+        if isinstance(data_path, Path):
+            data_path=Path(data_path)
+            
         self._data_files: list[Path] = [file for file in data_path.glob("*.pt")]
 
         self._labels: dict[str, torch.Tensor] = dict()
@@ -38,12 +41,13 @@ class PredictNextData(Dataset):
 
     def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         current_file: Path = self._data_files[idx]
+        print(f"Current file: {current_file}")
         sequence_identifier = current_file.stem
         embedding = torch.load(current_file, weights_only=True)
         return (
             embedding[:-1, ...],
             embedding[1:, ...],
-            (self._labels[sequence_identifier] if self._labels else None),
+            (self._labels[sequence_identifier] if self._labels else -1),
         )
 
     def __len__(self):
