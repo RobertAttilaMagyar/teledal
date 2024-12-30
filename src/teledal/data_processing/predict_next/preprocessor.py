@@ -1,5 +1,4 @@
 import argparse
-import json
 import re
 import shutil
 from pathlib import Path
@@ -162,7 +161,9 @@ if __name__ == "__main__":
 
     if args.regex_pairs is not None:
         with open(args.regex_pairs) as f:
-            regex_pairs = [(re.compile(v), f" {k} ") for k, v in yaml.safe_load(f).items()]
+            regex_pairs = [
+                (re.compile(v), f" {k} ") for k, v in yaml.safe_load(f).items()
+            ]
 
     pp = Preprocessor(regex_pairs)
 
