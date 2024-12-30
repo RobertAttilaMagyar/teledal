@@ -1,7 +1,8 @@
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
-from preprocessor import Preprocessor
+import torch.nn.functional as F
+
+from ..data_processing.predict_next.preprocessor import Preprocessor
 
 
 class TopK(nn.Module):
@@ -48,18 +49,19 @@ class TeleDAL(nn.Module):
         super().__init__()
         self._seq_len = seq_length
         self._k = k
-        self._layer_input = nn.Linear(embedding_dim, hidden_dim)
-        self._lstm = nn.LSTM(
+        self.linear1 = nn.Linear(seq_length * embedding_dim, hidden_dim)
+        self.layer_norm1 = nn.LayerNorm(normalized_shape = hidden_dim, )
+        self.lstm = nn.LSTM(
             hidden_dim,
             hidden_size=hidden_dim,
-            num_layers=2,
+            num_layers=num_layers,
             bidirectional=bidirectional,
         )
-        self._fc = nn.Linear(hidden_dim, embedding_dim*k)
+        self.fc = nn.Linear(hidden_dim, embedding_dim*k)
 
-    def forward(self, x): # x in shape (N, seq_length, embedding_dim)
+    def forward(self, x): # x in shape (N, seq_length + 2, embedding_dim)
         print(x.shape)
-        out = self._layer_input(x)
+        out = self.layer_input(x)
         print(out.shape)
         out, _ = self._lstm(out)
         print(out.shape)
