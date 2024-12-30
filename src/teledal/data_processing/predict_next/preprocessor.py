@@ -7,6 +7,7 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 import yaml
+from tqdm import tqdm
 from transformers import BertModel, BertTokenizer
 
 from .._special_constants import (
@@ -47,6 +48,7 @@ class Preprocessor:
         self._bert_model = BertModel.from_pretrained(
             "bert-base-uncased", output_hidden_states=True
         )
+        self._bert_model.to(self._device)
         self._bert_model.eval()
 
         self._hidden_state_idx = hidden_state_idx
@@ -82,7 +84,7 @@ class Preprocessor:
 
         with torch.no_grad():
             hidden_states = self._bert_model(
-                encode_dict["input_ids"], encode_dict["attention_mask"]
+                encode_dict["input_ids"].to(self._device), encode_dict["attention_mask"]
             )[2][self._hidden_state_idx]
 
         embedding = hidden_states.sum(dim=1)[0, :]
@@ -106,7 +108,9 @@ class Preprocessor:
             padding_length = length - len(log_sequence)
 
         start_of_sequence = torch.ones(self._embedding_dim) * START_OF_SEQUENCE
+        start_of_sequence = start_of_sequence.to(self._device)
         end_of_sequence = torch.ones(self._embedding_dim) * END_OF_SEQUENCE
+        end_of_sequence = end_of_sequence.to(self._device)
 
         msg_embeddings = []
         for msg in log_sequence:
@@ -162,7 +166,8 @@ if __name__ == "__main__":
 
     pp = Preprocessor(regex_pairs)
 
-    for file in args.input_dir.glob("*"):
+    files = [file for file in args.input_dir.glob("*")]
+    for file in tqdm(files):
         with open(file) as f:
             sequence = f.readlines()
 
