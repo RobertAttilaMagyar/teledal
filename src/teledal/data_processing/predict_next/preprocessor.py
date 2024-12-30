@@ -6,6 +6,7 @@ from pathlib import Path
 
 import torch
 import torch.nn.functional as F
+import yaml
 from transformers import BertModel, BertTokenizer
 
 from .._special_constants import (
@@ -137,7 +138,7 @@ if __name__ == "__main__":
         "--regex-pairs",
         type=Path,
         default=None,
-        help="Path to a json file containing the regex pairs",
+        help="Path to a `.yaml` file containing the regex pairs",
     )
     parser.add_argument(
         "--sequence-length",
@@ -151,23 +152,22 @@ if __name__ == "__main__":
     if args.output_dir.exists():
         shutil.rmtree(args.output_dir)
 
-    args.output_dir.mkdir()
+    args.output_dir.mkdir(parents=True)
 
     regex_pairs: list[tuple[str, str]] = []
 
     if args.regex_pairs is not None:
         with open(args.regex_pairs) as f:
-            regex_pairs = [(k, v) for k, v in json.load(f).items()]
+            regex_pairs = [(re.compile(v), k) for k, v in yaml.safe_load(f).items()]
 
     pp = Preprocessor(regex_pairs)
 
     for file in args.input_dir.glob("*"):
         with open(file) as f:
-            sequence = [line for line in f.readlines()]
+            sequence = f.readlines()
 
         embedding = pp.encode_sequence(sequence, args.sequence_length)
 
         out_file = (args.output_dir / file.stem).with_suffix(".pt")
 
-        with open(out_file) as of:
-            torch.save(embedding, of)
+        torch.save(embedding, out_file)

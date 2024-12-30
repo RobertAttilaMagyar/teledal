@@ -39,7 +39,7 @@ class PredictNextData(Dataset):
     def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         current_file: Path = self._data_files[idx]
         sequence_identifier = current_file.stem
-        embedding = torch.load(current_file)
+        embedding = torch.load(current_file, weights_only=True)
         return (
             embedding[:-1, ...],
             embedding[1:, ...],
