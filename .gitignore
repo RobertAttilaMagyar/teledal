@@ -3,3 +3,4 @@ data
 .venv
 *.egg-info
 __pycache__
+utilities/
