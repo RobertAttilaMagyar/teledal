@@ -7,22 +7,14 @@ from torch.utils.data import DataLoader
 from teledal.data_processing.predict_next.data import PredictNextData
 
 
-class TopK(nn.Module):
-    def __init__(self, k: int = 5) -> "TopK":
-        pass
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        pass
-
-
-def top_k_loss_one(output: torch.Tensor, target: torch.Tensor):
+def top_k_loss(output: torch.Tensor, target: torch.Tensor):
     """
     Calculates the top-K loss funciton for one sample
 
     Parameters:
     -----------
-    - output: A torch tensor with the shape LxKxE containing the top-K predictions.
-    - target: A torch tensor with shape LXE containing the target embedding vector
+    - output: A torch tensor with the shape N x L x K x E containing the top-K predictions.
+    - target: A torch tensor with shape N x L x E containing the target embedding vector
 
     In this notation L is the length of the sequence, K is the number of K in top-K and
     E is the dimension of the embedding vectors.
