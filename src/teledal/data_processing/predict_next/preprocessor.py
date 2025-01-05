@@ -58,7 +58,13 @@ class Preprocessor:
 
         self.sequence_length = None
 
-    def encode_message(self, msg: str) -> torch.Tensor:
+    def regexize(self, msg: str) -> str:
+        for pair in self._regex_pairs:
+            msg = re.sub(pair[0], pair[1], msg)
+
+        return msg
+
+    def encode_message(self, msg: str, regex: bool = True) -> torch.Tensor:
         """
         Creates semantic embedding of a log message by
         embedding each token and summing up the vectors along
@@ -67,9 +73,10 @@ class Preprocessor:
         Parameters:
         -----------
         - msg: The log message to embed.
+        - regex: Decides whether or not to apply regex on msg.
         """
-        for pair in self._regex_pairs:
-            msg = re.sub(pair[0], pair[1], msg)
+        if regex:
+            msg = self.regexize(msg)
         max_len = 100
         encode_dict = self._tokenizer.batch_encode_plus(
             [msg],  # Sentence to encode
@@ -89,6 +96,28 @@ class Preprocessor:
         embedding = hidden_states.sum(dim=1)[0, :]
         return embedding
 
+    @staticmethod
+    def pad_to_length(embeddings: list[torch.Tensor], length: int = None):
+        assert embeddings, "Empty list passed as embeddings!"
+        embedding_dim = embeddings[0].size()[0]
+        device = embeddings[0].device
+
+        padding_length = None
+        if length:
+            embeddings = embeddings[:length]
+            padding_length = length - len(embeddings)
+
+        start_of_sequence = torch.ones(embedding_dim) * START_OF_SEQUENCE
+        start_of_sequence = start_of_sequence.to(device)
+        end_of_sequence = torch.ones(embedding_dim) * END_OF_SEQUENCE
+        end_of_sequence = end_of_sequence.to(device)
+
+        result = torch.vstack([start_of_sequence] + embeddings + [end_of_sequence])
+
+        return F.pad(
+            result, (0, 0, 0, (padding_length if length else 0)), value=PADDING_VALUE
+        )
+
     def encode_sequence(
         self, log_sequence: list[str], length: int = None
     ) -> torch.Tensor:
@@ -101,26 +130,13 @@ class Preprocessor:
         log_sequence: List of log messages in the given sequence.
         length: Maximum length of a log sequence.
         """
-        padding_length = None
-        if length:
-            log_sequence = log_sequence[:length]
-            padding_length = length - len(log_sequence)
-
-        start_of_sequence = torch.ones(self._embedding_dim) * START_OF_SEQUENCE
-        start_of_sequence = start_of_sequence.to(self._device)
-        end_of_sequence = torch.ones(self._embedding_dim) * END_OF_SEQUENCE
-        end_of_sequence = end_of_sequence.to(self._device)
 
         msg_embeddings = []
         for msg in log_sequence:
             embedding = self.encode_message(msg)
             msg_embeddings.append(embedding)
 
-        result = torch.vstack([start_of_sequence] + msg_embeddings + [end_of_sequence])
-
-        return F.pad(
-            result, (0, 0, 0, (padding_length if length else 0)), value=PADDING_VALUE
-        )
+        return self.pad_to_length(msg_embeddings, length)
 
 
 if __name__ == "__main__":

@@ -4,9 +4,11 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset
 
+from .preprocessor import Preprocessor
+
 
 class PredictNextData(Dataset):
-    def __init__(self, data_path: Path, labels_file: Path = None):
+    def __init__(self, data_path: Path, labels_file: Path = None, length: int = None):
         """
         In order to avoid the time consuming preprocessing process
         it is highly recommended to create a temporary directory and
@@ -26,10 +28,15 @@ class PredictNextData(Dataset):
         - labels_file: Path to `.csv` file if available
         """
         super().__init__()
-        if isinstance(data_path, Path):
-            data_path=Path(data_path)
-            
-        self._data_files: list[Path] = [file for file in data_path.glob("*.pt")]
+        if not isinstance(data_path, Path):
+            data_path = Path(data_path)
+
+        self._data_files: list[Path] = [file for file in data_path.glob("*.txt")]
+        self._embedding_keys = torch.load(
+            (data_path / "embeddings").with_suffix(".pt"), weights_only=True
+        )
+
+        self._length = length
 
         self._labels: dict[str, torch.Tensor] = dict()
         if labels_file is not None:
@@ -41,9 +48,15 @@ class PredictNextData(Dataset):
 
     def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         current_file: Path = self._data_files[idx]
+        print(current_file)
+        with open(current_file) as f:
+            print(len(f.readlines()))
         print(f"Current file: {current_file}")
         sequence_identifier = current_file.stem
-        embedding = torch.load(current_file, weights_only=True)
+        with open(current_file) as f:
+            embedding = [self._embedding_keys[int(index), :] for index in f.readlines()]
+
+        embedding = Preprocessor.pad_to_length(embedding, self._length)
         return (
             embedding[:-1, ...],
             embedding[1:, ...],
