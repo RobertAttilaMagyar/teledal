@@ -2,7 +2,6 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from teledal.data_processing.predict_next.data import PredictNextData
@@ -28,14 +27,6 @@ def top_k_loss_one(output: torch.Tensor, target: torch.Tensor):
     In this notation L is the length of the sequence, K is the number of K in top-K and
     E is the dimension of the embedding vectors.
     """
-
-    assert len(target.shape) == 1, "The target should be a 1-dimensional tensor"
-    assert len(output.shape) == 2, "Output should be a 2-dimensioal tensor"
-    assert output.shape[1] == target.shape[0], "Dimension mismatch"
-
-    u = F.cosine_similarity(output, target, dim=2)
-    w = torch.sum(torch.dot(output, F.softmax(u)))
-    l = F.cosine_similarity(w, target)
     pass
 
 
@@ -62,16 +53,16 @@ class LayerNormLSTM(nn.Module):
                     batch_first=True,
                 )
             )
-            self.norm_list.append(
-                nn.LayerNorm(normalized_shape=hidden_size, eps=eps)
-            )
+            self.norm_list.append(nn.LayerNorm(normalized_shape=hidden_size, eps=eps))
 
-    def forward(self, x: torch.Tensor)->torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
+        h0 = h0.to(x.device)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
+        c0 = c0.to(x.device)
         out = x
         for i in range(self.num_layers):
-            out, _ = self.recurrent_list[i](out, (h0[[i],...], c0[[i],...]))
+            out, _ = self.recurrent_list[i](out, (h0[[i], ...], c0[[i], ...]))
             out = self.norm_list[i](out)
 
         return out
@@ -89,18 +80,18 @@ class TeleDAL(nn.Module):
     ) -> "TeleDAL":
         super().__init__()
         self.k = k
-        self.embedding_dim  = embedding_dim
+        self.embedding_dim = embedding_dim
         self._hidden_dim = hidden_dim
         self._num_layers = num_layers
         self.custom_lstm = LayerNormLSTM(embedding_dim, hidden_dim, num_layers)
         self.topk = nn.Linear(hidden_dim, embedding_dim * k)
 
-    def forward(self, x:torch.Tensor):  # x in shape (N, seq_length + 2, embedding_dim)
+    def forward(self, x: torch.Tensor):  # x in shape (N, seq_length + 2, embedding_dim)
         out = self.custom_lstm(x)
         out = self.topk(out)
         out = out.view(-1, x.size(1), self.k, self.embedding_dim)
-        
-        return out # (N, seq_length, K, embedding_dim)
+
+        return out  # (N, seq_length, K, embedding_dim)
 
 
 if __name__ == "__main__":
@@ -117,5 +108,3 @@ if __name__ == "__main__":
         out = model(X)
         print(out.shape)
         break
-
-

@@ -48,10 +48,6 @@ class PredictNextData(Dataset):
 
     def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         current_file: Path = self._data_files[idx]
-        print(current_file)
-        with open(current_file) as f:
-            print(len(f.readlines()))
-        print(f"Current file: {current_file}")
         sequence_identifier = current_file.stem
         with open(current_file) as f:
             embedding = [self._embedding_keys[int(index), :] for index in f.readlines()]
